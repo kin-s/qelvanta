@@ -1,0 +1,122 @@
+import {
+  LayoutDashboard, ShoppingCart, Package, Users, Truck, ShoppingBag,
+  Wallet, FileText, UserCog, Building2, Warehouse, BarChart3,
+  Sparkles, Zap, Bell, Settings,
+} from "lucide-react";
+
+export const moduleStubs = {
+  dashboard: {
+    title: "Dashboard",
+    description: "Your business at a glance.",
+    phase: "Phase 5",
+    icon: LayoutDashboard,
+    features: ["KPI cards", "Revenue & expense charts", "Recent activity", "Quick actions"],
+  },
+  sales: {
+    title: "Sales & POS",
+    description: "Fast, keyboard-friendly point of sale and complete sales history.",
+    phase: "Phase 7",
+    icon: ShoppingCart,
+    features: ["POS interface", "Cart & checkout", "Payment methods", "Sales history", "Returns & refunds"],
+  },
+  inventory: {
+    title: "Inventory",
+    description: "Track stock across locations with full movement history.",
+    phase: "Phase 6",
+    icon: Package,
+    features: ["Product catalogue", "Stock movements", "Low-stock alerts", "Categories & variants"],
+  },
+  customers: {
+    title: "Customers",
+    description: "Customer profiles, purchase history, and segmentation.",
+    phase: "Phase 8",
+    icon: Users,
+    features: ["Customer catalogue", "Profile pages", "Purchase history", "Segmentation"],
+  },
+  suppliers: {
+    title: "Suppliers",
+    description: "Supplier directory, purchase history, and payments.",
+    phase: "Phase 8",
+    icon: Truck,
+    features: ["Supplier catalogue", "Contact details", "Products supplied", "Payment records"],
+  },
+  purchases: {
+    title: "Purchases",
+    description: "Purchase orders and goods received notes.",
+    phase: "Phase 8",
+    icon: ShoppingBag,
+    features: ["Purchase orders", "Supplier selection", "Partial receipts", "History"],
+  },
+  finance: {
+    title: "Finance",
+    description: "Expenses, income, cash flow, receivables, and payables.",
+    phase: "Phase 9",
+    icon: Wallet,
+    features: ["Expense tracking", "Income records", "Cash flow", "Accounts receivable", "Accounts payable"],
+  },
+  invoices: {
+    title: "Invoices & Quotations",
+    description: "Create and send professional invoices, quotations, and recurring bills.",
+    phase: "Phase 9",
+    icon: FileText,
+    features: ["Invoice creation", "Quotations", "Recurring invoices", "PDF & print"],
+  },
+  employees: {
+    title: "Employees",
+    description: "Employee directory, attendance, leave, shifts, and payroll records.",
+    phase: "Phase 10",
+    icon: UserCog,
+    features: ["Directory", "Attendance", "Leave requests", "Shifts", "Payroll records"],
+  },
+  branches: {
+    title: "Branches",
+    description: "Multi-location management with per-branch reporting.",
+    phase: "Phase 10",
+    icon: Building2,
+    features: ["Branch catalogue", "Branch staff", "Branch inventory", "Branch comparison"],
+  },
+  warehouses: {
+    title: "Warehouses",
+    description: "Warehouse inventory and inter-location stock transfers.",
+    phase: "Phase 10",
+    icon: Warehouse,
+    features: ["Warehouse catalogue", "Stock transfers", "Movement history"],
+  },
+  reports: {
+    title: "Reports",
+    description: "Analytics centre with every report, filterable and exportable.",
+    phase: "Phase 11",
+    icon: BarChart3,
+    features: ["Sales reports", "Inventory reports", "Financial reports", "CSV & PDF export"],
+  },
+  "ai-assistant": {
+    title: "AI Assistant",
+    description: "Ask plain-language questions about your own business data.",
+    phase: "Phase 11",
+    icon: Sparkles,
+    features: ["Chat interface", "Suggested questions", "Insight cards", "Backend-authorized data"],
+  },
+  automations: {
+    title: "Automations",
+    description: "Trigger reminders, summaries, and alerts automatically.",
+    phase: "Phase 11",
+    icon: Zap,
+    features: ["Automation dashboard", "Templates", "Triggers & actions", "Run history"],
+  },
+  notifications: {
+    title: "Notifications",
+    description: "One notification centre across every module.",
+    phase: "Phase 11",
+    icon: Bell,
+    features: ["Notification centre", "Filter by category", "Read/unread states", "Preferences"],
+  },
+  settings: {
+    title: "Settings",
+    description: "Business, regional, user, security, and data management settings.",
+    phase: "Phase 12",
+    icon: Settings,
+    features: ["Business settings", "Regional settings", "User settings", "Security & audit log", "Data management"],
+  },
+} as const;
+
+export type ModuleKey = keyof typeof moduleStubs;
