@@ -1,0 +1,310 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ==========================================
+// 1. MULTI-TENANCY & USERS
+// ==========================================
+
+model Organization {
+  id        String   @id @default(uuid())
+  name      String
+  currency  String   @default("USD")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  memberships Membership[]
+  branches    Branch[]
+  products    Product[]
+  customers   Customer[]
+  suppliers   Supplier[]
+  sales       Sale[]
+  expenses    Expense[]
+  invoices    Invoice[]
+  employees   Employee[]
+}
+
+model User {
+  id            String    @id @default(uuid())
+  name          String
+  email         String    @unique
+  passwordHash  String?
+  emailVerified DateTime?
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  memberships Membership[]
+}
+
+model Membership {
+  id             String       @id @default(uuid())
+  userId         String
+  organizationId String
+  role           String       @default("member") // owner, admin, member
+  createdAt      DateTime     @default(now())
+
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, organizationId])
+}
+
+// ==========================================
+// 2. OPERATIONS (Branches & Warehouses)
+// ==========================================
+
+model Branch {
+  id             String   @id @default(uuid())
+  organizationId String
+  name           String
+  code           String
+  address        String?
+  city           String?
+  country        String?
+  manager        String?
+  phone          String?
+  status         String   @default("active")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  warehouses   Warehouse[]
+  employees    Employee[]
+  sales        Sale[]
+
+  @@unique([organizationId, code])
+}
+
+model Warehouse {
+  id             String   @id @default(uuid())
+  organizationId String
+  branchId       String
+  name           String
+  code           String
+  address        String?
+  manager        String?
+  capacity       Int      @default(0)
+  status         String   @default("active")
+  createdAt      DateTime @default(now())
+
+  branch Branch @relation(fields: [branchId], references: [id], onDelete: Cascade)
+}
+
+// ==========================================
+// 3. INVENTORY
+// ==========================================
+
+model Category {
+  id             String    @id @default(uuid())
+  organizationId String
+  name           String
+  description    String?
+  products       Product[]
+}
+
+model Product {
+  id             String   @id @default(uuid())
+  organizationId String
+  categoryId     String?
+  name           String
+  sku            String
+  barcode        String?
+  description    String?
+  brand          String?
+  purchasePrice  Float    @default(0)
+  sellingPrice   Float    @default(0)
+  stockQuantity  Int      @default(0)
+  reorderLevel   Int      @default(0)
+  unit           String   @default("pcs")
+  status         String   @default("active")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  category     Category?    @relation(fields: [categoryId], references: [id])
+  movements    StockMovement[]
+  saleItems    SaleItem[]
+}
+
+model StockMovement {
+  id          String   @id @default(uuid())
+  productId   String
+  type        String   // received, sold, returned, adjustment, transfer, damaged
+  quantity    Int
+  reference   String?
+  date        DateTime @default(now())
+  notes       String?
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+}
+
+// ==========================================
+// 4. CRM & SUPPLIERS
+// ==========================================
+
+model Customer {
+  id             String   @id @default(uuid())
+  organizationId String
+  name           String
+  email          String?
+  phone          String?
+  company        String?
+  address        String?
+  segment        String   @default("regular")
+  status         String   @default("active")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  sales        Sale[]
+  invoices     Invoice[]
+}
+
+model Supplier {
+  id             String   @id @default(uuid())
+  organizationId String
+  name           String
+  contactName    String?
+  email          String?
+  phone          String?
+  address        String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+}
+
+// ==========================================
+// 5. SALES & POS
+// ==========================================
+
+model Sale {
+  id             String   @id @default(uuid())
+  organizationId String
+  branchId       String?
+  customerId     String?
+  saleDate       DateTime @default(now())
+  subtotal       Float
+  taxAmount      Float
+  discountAmount Float
+  total          Float
+  paymentMethod  String
+  status         String   @default("completed")
+  cashier        String?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  branch       Branch?      @relation(fields: [branchId], references: [id])
+  customer     Customer?    @relation(fields: [customerId], references: [id])
+  items        SaleItem[]
+}
+
+model SaleItem {
+  id        String  @id @default(uuid())
+  saleId    String
+  productId String
+  quantity  Int
+  unitPrice Float
+  lineTotal Float
+
+  sale    Sale    @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id])
+}
+
+// ==========================================
+// 6. FINANCE & INVOICING
+// ==========================================
+
+model Expense {
+  id             String   @id @default(uuid())
+  organizationId String
+  title          String
+  category       String
+  amount         Float
+  date           DateTime
+  paymentMethod  String
+  status         String   @default("paid")
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+}
+
+model Invoice {
+  id             String   @id @default(uuid())
+  organizationId String
+  customerId     String?
+  invoiceNumber  String
+  issueDate      DateTime @default(now())
+  dueDate        DateTime
+  status         String   @default("draft") // draft, sent, paid, overdue
+  subtotal       Float
+  taxAmount      Float
+  total          Float
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  customer     Customer?    @relation(fields: [customerId], references: [id])
+  items        InvoiceItem[]
+}
+
+model InvoiceItem {
+  id          String  @id @default(uuid())
+  invoiceId   String
+  description String
+  quantity    Int
+  unitPrice   Float
+  amount      Float
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+}
+
+// ==========================================
+// 7. HR & EMPLOYEES
+// ==========================================
+
+model Employee {
+  id             String   @id @default(uuid())
+  organizationId String
+  branchId       String?
+  name           String
+  email          String?
+  phone          String?
+  department     String
+  position       String
+  salary         Float    @default(0)
+  status         String   @default("active")
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  branch       Branch?      @relation(fields: [branchId], references: [id])
+  attendance   Attendance[]
+  leaves       LeaveRequest[]
+}
+
+model Attendance {
+  id         String    @id @default(uuid())
+  employeeId String
+  date       DateTime
+  checkIn    DateTime?
+  checkOut   DateTime?
+  status     String    @default("present")
+
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+}
+
+model LeaveRequest {
+  id         String   @id @default(uuid())
+  employeeId String
+  type       String
+  startDate  DateTime
+  endDate    DateTime
+  reason     String?
+  status     String   @default("pending")
+
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+}

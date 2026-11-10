@@ -16,12 +16,12 @@ function makeSession(email: string, name: string): AuthSession {
   const expires = new Date(now.getTime() + 1000 * 60 * 60 * 24 * 7);
   return {
     user: {
-      id: "user_" + Math.random().toString(36).slice(2, 10),
+      id: `user_${crypto.randomUUID().slice(0, 8)}`,
       name,
       email,
       emailVerified: false,
     },
-    token: "demo_" + Math.random().toString(36).slice(2),
+    token: `demo_${crypto.randomUUID()}`,
     createdAt: now.toISOString(),
     expiresAt: expires.toISOString(),
   };

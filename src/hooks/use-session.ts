@@ -1,84 +1,39 @@
 "use client";
 
-import { useCallback, useMemo, useSyncExternalStore } from "react";
-import type { AuthSession, AuthUser } from "@/services/interfaces/auth";
-
-const KEY = "bizflow:auth:session";
-const EVT = "bizflow:auth-change";
+import { useSession as useNextAuthSession, signOut } from "next-auth/react";
+import { useCallback } from "react";
+import type { AuthUser } from "@/services/interfaces/auth";
 
 const DEMO_USER: AuthUser = {
   id: "demo_user",
   name: "Demo User",
-  email: "demo@bizflow.app",
+  email: "demo@qelvanta.app",
   emailVerified: true,
 };
 
-let cachedRaw: string | null | undefined = undefined;
-let cachedParsed: AuthSession | null = null;
-
-function getSnapshot(): AuthSession | null {
-  if (typeof window === "undefined") return null;
-  let raw: string | null = null;
-  try {
-    raw = window.localStorage.getItem(KEY);
-  } catch {
-    return null;
-  }
-  if (raw === cachedRaw) return cachedParsed;
-  cachedRaw = raw;
-  if (!raw) {
-    cachedParsed = null;
-  } else {
-    try {
-      cachedParsed = JSON.parse(raw) as AuthSession;
-    } catch {
-      cachedParsed = null;
-    }
-  }
-  return cachedParsed;
-}
-
-function getServerSnapshot(): AuthSession | null {
-  return null;
-}
-
-function subscribe(listener: () => void) {
-  const onStorage = (e: StorageEvent) => {
-    if (e.key === KEY) {
-      cachedRaw = undefined;
-      listener();
-    }
-  };
-  const onCustom = () => {
-    cachedRaw = undefined;
-    listener();
-  };
-  window.addEventListener("storage", onStorage);
-  window.addEventListener(EVT, onCustom);
-  return () => {
-    window.removeEventListener("storage", onStorage);
-    window.removeEventListener(EVT, onCustom);
-  };
-}
-
 export function useSession() {
-  const session = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
-  const user = useMemo<AuthUser>(() => session?.user ?? DEMO_USER, [session]);
-  return { session, user, isDemo: !session };
-}
+  const { data: session, status } = useNextAuthSession();
+  
+  // Map the NextAuth session to our frontend interface
+  const user = session?.user 
+    ? {
+        id: session.user.id || "unknown",
+        name: session.user.name || "User",
+        email: session.user.email || "",
+        emailVerified: true,
+      }
+    : DEMO_USER;
 
-export function notifyAuthChange() {
-  if (typeof window === "undefined") return;
-  window.dispatchEvent(new Event(EVT));
+  return { 
+    session, 
+    user, 
+    isDemo: !session,
+    isLoading: status === "loading"
+  };
 }
 
 export function useLogout() {
   return useCallback(() => {
-    try {
-      window.localStorage.removeItem(KEY);
-    } catch {
-      // ignore
-    }
-    notifyAuthChange();
+    signOut({ callbackUrl: "/login" });
   }, []);
 }
