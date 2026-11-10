@@ -3,8 +3,8 @@ import authConfig from "@/auth.config"
 
 const { handlers } = NextAuth({
   ...authConfig,
-  secret: process.env.AUTH_SECRET, // Explicitly pass the secret
+  secret: process.env.AUTH_SECRET,
 })
 
 export const { GET, POST } = handlers
-export const runtime = 'edge' // Force Edge runtime
+export const runtime = 'edge'

@@ -4,11 +4,12 @@ import { PrismaAdapter } from "@auth/prisma-adapter"
 import { prisma } from "./prisma"
 import { compare } from "bcrypt-ts"
 import authConfig from "@/auth.config"
+import type { NextAuthConfig } from "next-auth"
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
   adapter: PrismaAdapter(prisma),
-  secret: process.env.AUTH_SECRET, // <-- Explicitly pass the secret here too
+  secret: process.env.AUTH_SECRET,
   providers: authConfig.providers.map(provider => {
     if (provider.type === "credentials") {
       return {
@@ -37,4 +38,4 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     }
     return provider
   }),
-})
+} as NextAuthConfig)

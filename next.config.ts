@@ -9,7 +9,14 @@ const nextConfig: NextConfig = {
       },
     },
   },
-  serverExternalPackages: ["@aws-sdk/client-s3", "openai", "resend", "@prisma/client"],
+  serverExternalPackages: [
+    "@aws-sdk/client-s3", 
+    "openai", 
+    "resend", 
+    "@prisma/client",
+    "bcrypt-ts"
+    // REMOVED: "@auth/core" and "next-auth"
+  ],
 };
 
 export default nextConfig;
