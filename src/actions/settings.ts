@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma"
 import { getCurrentOrgId } from "@/lib/auth-utils"
 import { revalidatePath } from "next/cache"
 
-export async function updateOrganization(data: { name: string; currency: string }) {
+export async function updateOrganization(data: { name: string; currency: string; logoUrl?: string }) {
   try {
     const orgId = await getCurrentOrgId()
     await prisma.organization.update({
@@ -12,6 +12,7 @@ export async function updateOrganization(data: { name: string; currency: string 
       data: {
         name: data.name,
         currency: data.currency,
+        logoUrl: data.logoUrl,
       }
     })
     revalidatePath("/settings")

@@ -2,6 +2,7 @@
 
 import { prisma } from "@/lib/prisma"
 import { getCurrentOrgId } from "@/lib/auth-utils"
+import { requireRole } from "@/lib/rbac" // <-- Import RBAC
 import { revalidatePath } from "next/cache"
 import type { Expense, Income } from "@/types/finance"
 
@@ -19,7 +20,6 @@ export async function getFinanceData() {
       orderBy: { date: "desc" }
     })
 
-    // Map to frontend types
     const mappedExpenses: Expense[] = expenses.map(e => ({
       id: e.id, title: e.title, category: e.category as any, description: "",
       amount: e.amount, currency: "USD", date: e.date.toISOString(),
@@ -36,14 +36,15 @@ export async function getFinanceData() {
 
     return { expenses: mappedExpenses, income: mappedIncome }
   } catch (error) {
-    console.error("Failed to fetch finance data:", error)
     return { error: "Failed to load finance data." }
   }
 }
 
 export async function createExpense(data: Expense) {
   try {
-    const orgId = await getCurrentOrgId()
+    // Only owner and admin can create expenses
+    const { orgId } = await requireRole(["owner", "admin"])
+
     await prisma.expense.create({
       data: {
         organizationId: orgId,
@@ -57,14 +58,15 @@ export async function createExpense(data: Expense) {
     })
     revalidatePath("/finance")
     return { success: true }
-  } catch (error) {
-    return { error: "Failed to save expense." }
+  } catch (error: any) {
+    return { error: error.message || "Failed to save expense." }
   }
 }
 
 export async function createIncome(data: Income) {
   try {
-    const orgId = await getCurrentOrgId()
+    const { orgId } = await requireRole(["owner", "admin"])
+    
     await prisma.income.create({
       data: {
         organizationId: orgId,
@@ -77,7 +79,7 @@ export async function createIncome(data: Income) {
     })
     revalidatePath("/finance")
     return { success: true }
-  } catch (error) {
-    return { error: "Failed to save income." }
+  } catch (error: any) {
+    return { error: error.message || "Failed to save income." }
   }
 }

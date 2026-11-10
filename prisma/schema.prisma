@@ -16,6 +16,7 @@ model Organization {
   id        String   @id @default(uuid())
   name      String
   currency  String   @default("USD")
+  logoUrl   String?  // <-- ADDED FOR FILE UPLOAD
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -59,9 +60,8 @@ model Membership {
 }
 
 // ==========================================
-// 2. OPERATIONS (Branches & Warehouses)
+// 2. OPERATIONS
 // ==========================================
-
 model Branch {
   id             String   @id @default(uuid())
   organizationId String
@@ -102,7 +102,6 @@ model Warehouse {
 // ==========================================
 // 3. INVENTORY
 // ==========================================
-
 model Category {
   id             String    @id @default(uuid())
   organizationId String
@@ -120,6 +119,7 @@ model Product {
   barcode        String?
   description    String?
   brand          String?
+  imageUrl       String?  // <-- ADDED FOR FILE UPLOAD
   purchasePrice  Float    @default(0)
   sellingPrice   Float    @default(0)
   stockQuantity  Int      @default(0)
@@ -138,7 +138,7 @@ model Product {
 model StockMovement {
   id          String   @id @default(uuid())
   productId   String
-  type        String   // received, sold, returned, adjustment, transfer, damaged
+  type        String   
   quantity    Int
   reference   String?
   date        DateTime @default(now())
@@ -150,7 +150,6 @@ model StockMovement {
 // ==========================================
 // 4. CRM & SUPPLIERS
 // ==========================================
-
 model Customer {
   id             String   @id @default(uuid())
   organizationId String
@@ -187,7 +186,6 @@ model Supplier {
 // ==========================================
 // 5. SALES & POS
 // ==========================================
-
 model Sale {
   id             String   @id @default(uuid())
   organizationId String
@@ -223,7 +221,6 @@ model SaleItem {
 // ==========================================
 // 6. FINANCE & INVOICING
 // ==========================================
-
 model Expense {
   id             String   @id @default(uuid())
   organizationId String
@@ -258,7 +255,7 @@ model Invoice {
   invoiceNumber  String
   issueDate      DateTime @default(now())
   dueDate        DateTime
-  status         String   @default("draft") // draft, sent, paid, overdue
+  status         String   @default("draft") 
   subtotal       Float
   taxAmount      Float
   total          Float
@@ -310,9 +307,8 @@ model QuotationItem {
 }
 
 // ==========================================
-// 7. HR & EMPLOYEES
+// 7. HR
 // ==========================================
-
 model Employee {
   id             String   @id @default(uuid())
   organizationId String
