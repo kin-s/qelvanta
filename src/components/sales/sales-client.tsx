@@ -1,68 +1,40 @@
 "use client";
 
 import { useState } from "react";
-import { ShoppingCart, MoreHorizontal, Eye, Printer, RotateCcw } from "lucide-react";
+import { ShoppingCart, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import {
   Table, TableHeader, TableBody, TableRow, TableHead, TableCell,
 } from "@/components/ui/table";
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle,
 } from "@/components/ui/sheet";
-import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem,
-  DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { useLocalStorageState } from "@/hooks/use-local-storage";
-import { SEED_PRODUCTS, SEED_CATEGORIES, SEED_MOVEMENTS } from "@/data/inventory";
-import { SEED_CUSTOMERS, SEED_SALES, TAX_RATE } from "@/data/sales";
-import type { Product, Category, StockMovement } from "@/types/inventory";
-import type { CartItem, Customer, PaymentMethod, Sale, Refund } from "@/types/sales";
-import {
-  PAYMENT_METHOD_LABELS, refundedQtyForProduct,
-} from "@/types/sales";
+import { SEED_CUSTOMERS, TAX_RATE } from "@/data/sales";
+import type { Product, Category } from "@/types/inventory";
+import type { CartItem, Customer, PaymentMethod, Sale } from "@/types/sales";
+import { PAYMENT_METHOD_LABELS } from "@/types/sales";
 import { PosProductGrid } from "./pos-product-grid";
 import { PosCart } from "./pos-cart";
 import { CheckoutDialog } from "./checkout-dialog";
 import { ReceiptDialog } from "./receipt-preview";
-import { SaleDetailSheet } from "./sale-detail-sheet";
-import { RefundDialog } from "./refund-dialog";
 import { formatCurrency, formatDate, cn } from "@/lib/utils";
+import { createSale } from "@/actions/sales";
+import { SEED_CATEGORIES } from "@/data/inventory";
 
 type Tab = "pos" | "history";
 
-function generateSaleId(): string {
-  return `SALE-${crypto.randomUUID().slice(0, 6).toUpperCase()}`;
-}
-
-function generateMovementId(): string {
-  return `mov_${crypto.randomUUID().slice(0, 8)}`;
-}
-
-export function SalesClient() {
-  const [products, setProducts] = useLocalStorageState<Product[]>(
-    "bizflow:products",
-    SEED_PRODUCTS
-  );
-  const [categories] = useLocalStorageState<Category[]>(
-    "bizflow:categories",
-    SEED_CATEGORIES
-  );
-  const [movements, setMovements] = useLocalStorageState<StockMovement[]>(
-    "bizflow:stock-movements",
-    SEED_MOVEMENTS
-  );
-  const [customers] = useLocalStorageState<Customer[]>(
-    "bizflow:customers",
-    SEED_CUSTOMERS
-  );
-  const [sales, setSales] = useLocalStorageState<Sale[]>(
-    "bizflow:sales",
-    SEED_SALES
-  );
+export function SalesClient({ 
+  initialProducts, 
+  initialSales 
+}: { 
+  initialProducts: Product[]; 
+  initialSales: Sale[];
+}) {
+  const [products, setProducts] = useState<Product[]>(initialProducts);
+  const [sales, setSales] = useState<Sale[]>(initialSales);
+  const [categories] = useState<Category[]>(SEED_CATEGORIES);
 
   const [tab, setTab] = useState<Tab>("pos");
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -72,15 +44,7 @@ export function SalesClient() {
   const [receiptOpen, setReceiptOpen] = useState(false);
   const [receiptSale, setReceiptSale] = useState<Sale | null>(null);
   const [mobileCartOpen, setMobileCartOpen] = useState(false);
-  const [selectedSaleId, setSelectedSaleId] = useState<string | null>(null);
-  const [refundSaleId, setRefundSaleId] = useState<string | null>(null);
-
-  const selectedSale = selectedSaleId
-    ? sales.find((s) => s.id === selectedSaleId) ?? null
-    : null;
-  const refundSale = refundSaleId
-    ? sales.find((s) => s.id === refundSaleId) ?? null
-    : null;
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const itemCount = cart.reduce((s, i) => s + i.quantity, 0);
   const cartTotal = cart.reduce((s, i) => s + i.unitPrice * i.quantity, 0);
@@ -144,140 +108,65 @@ export function SalesClient() {
     setCustomer(null);
   }
 
-  function completeSale(paymentMethod: PaymentMethod) {
-    const saleId = generateSaleId();
-    const now = new Date().toISOString();
+  async function completeSale(paymentMethod: PaymentMethod) {
+    setIsSubmitting(true);
+    
+    // Call the Server Action
+    const res = await createSale({
+      cart,
+      customerId: customer?.id,
+      discountAmount,
+      taxAmount,
+      total: finalTotal,
+      paymentMethod
+    });
 
-    const saleItems = cart.map((c) => ({
-      productId: c.productId,
-      name: c.name,
-      sku: c.sku,
-      unitPrice: c.unitPrice,
-      quantity: c.quantity,
-      lineTotal: Math.round(c.unitPrice * c.quantity * 100) / 100,
-    }));
+    setIsSubmitting(false);
 
-    const sale: Sale = {
-      id: saleId,
-      createdAt: now,
+    if (res.error) {
+      toast.error("Checkout failed", { description: res.error });
+      return;
+    }
+
+    // Optimistically update local UI
+    const mockSale: Sale = {
+      id: res.saleId || `SALE-${crypto.randomUUID().slice(0, 6).toUpperCase()}`,
+      createdAt: new Date().toISOString(),
       customerId: customer?.id,
       customerName: customer?.name ?? "Walk-in customer",
-      items: saleItems,
-      subtotal: Math.round(cartTotal * 100) / 100,
+      items: cart.map(c => ({
+        productId: c.productId, name: c.name, sku: c.sku,
+        unitPrice: c.unitPrice, quantity: c.quantity, lineTotal: c.unitPrice * c.quantity
+      })),
+      subtotal: cartTotal,
       discountPct,
       discountAmount,
       taxAmount,
       total: finalTotal,
       paymentMethod,
-      cashier: "Demo User",
+      cashier: "Admin",
       status: "completed",
       refunds: [],
     };
 
-    const updatedProducts = products.map((p) => {
-      const item = cart.find((c) => c.productId === p.id);
-      if (!item) return p;
-      return {
-        ...p,
-        stockQuantity: Math.max(0, p.stockQuantity - item.quantity),
-        updatedAt: now,
-      };
-    });
-    setProducts(updatedProducts);
-
-    const newMovements: StockMovement[] = cart.map((c) => {
-      const product = products.find((p) => p.id === c.productId);
-      const source = product?.warehouseId === "wh_main" ? "Main warehouse" : "Store front";
-      return {
-        id: generateMovementId(),
-        productId: c.productId,
-        productName: c.name,
-        type: "sold",
-        quantityDelta: -c.quantity,
-        sourceLocation: source,
-        destinationLocation: sale.customerName,
-        reference: saleId,
-        date: now,
-        user: "Demo User",
-        status: "completed",
-      };
-    });
-    setMovements([...newMovements, ...movements]);
-
-    setSales([sale, ...sales]);
+    setSales([mockSale, ...sales]);
+    
+    // Update local product stock so POS reflects the change immediately
+    setProducts(products.map(p => {
+      const cartItem = cart.find(c => c.productId === p.id);
+      if (!cartItem) return p;
+      return { ...p, stockQuantity: p.stockQuantity - cartItem.quantity };
+    }));
 
     setCart([]);
     setDiscountPct(0);
     setCustomer(null);
     setCheckoutOpen(false);
     setMobileCartOpen(false);
-    setReceiptSale(sale);
+    setReceiptSale(mockSale);
     setReceiptOpen(true);
 
-    toast.success("Sale complete", {
-      description: `${sale.id} · ${formatCurrency(sale.total)}`,
-    });
-  }
-
-  function processRefund(refund: Refund) {
-    if (!refundSale) return;
-    const now = refund.createdAt;
-
-    // 1. Update the sale with the new refund, recalculate status
-    const updatedSales = sales.map((s) => {
-      if (s.id !== refundSale.id) return s;
-      const nextRefunds = [...(s.refunds ?? []), refund];
-      // Compute remaining refundable qty
-      const remaining = s.items.reduce((sum, item) => {
-        const refundedAll = nextRefunds.reduce((rs, r) => {
-          const it = r.items.find((i) => i.productId === item.productId);
-          return rs + (it?.quantity ?? 0);
-        }, 0);
-        return sum + Math.max(0, item.quantity - refundedAll);
-      }, 0);
-      const status: Sale["status"] =
-        remaining === 0 ? "refunded" : "partially_refunded";
-      return { ...s, refunds: nextRefunds, status };
-    });
-    setSales(updatedSales);
-
-    // 2. Add stock back
-    const updatedProducts = products.map((p) => {
-      const refundItem = refund.items.find((i) => i.productId === p.id);
-      if (!refundItem) return p;
-      return {
-        ...p,
-        stockQuantity: p.stockQuantity + refundItem.quantity,
-        updatedAt: now,
-      };
-    });
-    setProducts(updatedProducts);
-
-    // 3. Create return movements
-    const newMovements: StockMovement[] = refund.items.map((item) => {
-      const product = products.find((p) => p.id === item.productId);
-      const destination = product?.warehouseId === "wh_main" ? "Main warehouse" : "Store front";
-      return {
-        id: generateMovementId(),
-        productId: item.productId,
-        productName: item.name,
-        type: "returned",
-        quantityDelta: item.quantity,
-        sourceLocation: refundSale.customerName,
-        destinationLocation: destination,
-        reference: `${refund.id} · ${refundSale.id}`,
-        date: now,
-        user: "Demo User",
-        status: "completed",
-        notes: refund.reasonNote,
-      };
-    });
-    setMovements([...newMovements, ...movements]);
-
-    setRefundSaleId(null);
-    toast.success("Refund recorded", {
-      description: `${refund.id} · ${formatCurrency(refund.amount)}`,
-    });
+    toast.success("Sale saved to database!", { description: mockSale.id });
   }
 
   const historyRows = [...sales].sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
@@ -291,7 +180,7 @@ export function SalesClient() {
           </h1>
           <p className="mt-1 text-sm text-muted">
             Fast point of sale and complete sales history.{" "}
-            <span className="text-xs">Demo — no payment is processed.</span>
+            <span className="text-xs text-success">Connected to PostgreSQL.</span>
           </p>
         </div>
       </div>
@@ -338,7 +227,7 @@ export function SalesClient() {
                 <PosCart
                   cart={cart}
                   products={products}
-                  customers={customers}
+                  customers={SEED_CUSTOMERS}
                   customer={customer}
                   discountPct={discountPct}
                   taxRate={TAX_RATE}
@@ -377,7 +266,7 @@ export function SalesClient() {
                 <PosCart
                   cart={cart}
                   products={products}
-                  customers={customers}
+                  customers={SEED_CUSTOMERS}
                   customer={customer}
                   discountPct={discountPct}
                   taxRate={TAX_RATE}
@@ -412,97 +301,41 @@ export function SalesClient() {
                     <TableHead>Sale ID</TableHead>
                     <TableHead>Customer</TableHead>
                     <TableHead className="hidden md:table-cell">Date</TableHead>
-                    <TableHead className="hidden md:table-cell text-right">Items</TableHead>
+                    <TableHead className="text-right">Items</TableHead>
                     <TableHead className="text-right">Total</TableHead>
                     <TableHead className="hidden sm:table-cell">Payment</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead className="w-10 text-right"><span className="sr-only">Actions</span></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {historyRows.map((s) => {
-                    const refundable = s.items.some(
-                      (i) => i.quantity - refundedQtyForProduct(s, i.productId) > 0
-                    );
-                    return (
-                      <TableRow key={s.id}>
-                        <TableCell>
-                          <button
-                            type="button"
-                            onClick={() => setSelectedSaleId(s.id)}
-                            className="tabular text-xs font-medium text-accent hover:underline"
-                          >
-                            {s.id}
-                          </button>
-                        </TableCell>
-                        <TableCell className="truncate">{s.customerName}</TableCell>
-                        <TableCell className="hidden md:table-cell text-xs text-muted">
-                          {formatDate(s.createdAt, "en-US", {
-                            month: "short",
-                            day: "numeric",
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
-                        </TableCell>
-                        <TableCell className="tabular hidden md:table-cell text-right">
-                          {s.items.length}
-                        </TableCell>
-                        <TableCell className="tabular text-right font-medium">
-                          {formatCurrency(s.total)}
-                        </TableCell>
-                        <TableCell className="hidden sm:table-cell text-xs text-muted">
-                          {PAYMENT_METHOD_LABELS[s.paymentMethod]}
-                        </TableCell>
-                        <TableCell>
-                          {s.status === "completed" && <Badge variant="success">Completed</Badge>}
-                          {s.status === "partially_refunded" && <Badge variant="warning">Partial refund</Badge>}
-                          {s.status === "refunded" && <Badge variant="danger">Refunded</Badge>}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" aria-label={`Actions for ${s.id}`}>
-                                <MoreHorizontal />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuLabel>{s.id}</DropdownMenuLabel>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem onClick={() => setSelectedSaleId(s.id)}>
-                                <Eye /> View details
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => {
-                                  setReceiptSale(s);
-                                  setReceiptOpen(true);
-                                }}
-                              >
-                                <Printer /> Reprint receipt
-                              </DropdownMenuItem>
-                              {refundable && (
-                                <>
-                                  <DropdownMenuSeparator />
-                                  <DropdownMenuItem
-                                    className="text-danger [&_svg]:text-danger"
-                                    onClick={() => setRefundSaleId(s.id)}
-                                  >
-                                    <RotateCcw /> Refund
-                                  </DropdownMenuItem>
-                                </>
-                              )}
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
+                  {historyRows.map((s) => (
+                    <TableRow key={s.id}>
+                      <TableCell className="tabular text-xs font-medium">{s.id.slice(0, 8)}...</TableCell>
+                      <TableCell className="truncate">{s.customerName}</TableCell>
+                      <TableCell className="hidden md:table-cell text-xs text-muted">
+                        {formatDate(s.createdAt, "en-US", {
+                          month: "short",
+                          day: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </TableCell>
+                      <TableCell className="tabular text-right">{s.items.length}</TableCell>
+                      <TableCell className="tabular text-right font-medium">
+                        {formatCurrency(s.total)}
+                      </TableCell>
+                      <TableCell className="hidden sm:table-cell text-xs text-muted">
+                        {PAYMENT_METHOD_LABELS[s.paymentMethod]}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="success">{s.status}</Badge>
+                      </TableCell>
+                    </TableRow>
+                  ))}
                 </TableBody>
               </Table>
             </Card>
           )}
-          <p className="text-center text-xs text-muted">
-            Click a sale ID or the ⋮ menu to view details, reprint, or refund.
-          </p>
         </div>
       )}
 
@@ -524,24 +357,6 @@ export function SalesClient() {
           setReceiptOpen(false);
           setReceiptSale(null);
         }}
-      />
-
-      <SaleDetailSheet
-        open={!!selectedSaleId}
-        onOpenChange={(o) => !o && setSelectedSaleId(null)}
-        sale={selectedSale}
-        onReprint={(sale) => {
-          setReceiptSale(sale);
-          setReceiptOpen(true);
-        }}
-        onRefund={(sale) => setRefundSaleId(sale.id)}
-      />
-
-      <RefundDialog
-        open={!!refundSaleId}
-        onOpenChange={(o) => !o && setRefundSaleId(null)}
-        sale={refundSale}
-        onSubmit={processRefund}
       />
     </div>
   );
