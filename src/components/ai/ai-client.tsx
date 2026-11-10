@@ -8,8 +8,9 @@ import { Badge } from "@/components/ui/badge";
 import { ChatMessageBubble, TypingIndicator } from "./chat-message";
 import { SuggestedQuestions } from "./suggested-questions";
 import { InsightSection } from "./insight-cards";
-import { SUGGESTED_QUESTIONS, INSIGHT_CARDS, getMockResponse } from "@/data/ai";
+import { SUGGESTED_QUESTIONS, INSIGHT_CARDS } from "@/data/ai";
 import type { ChatMessage } from "@/types/ai";
+import { chatWithAI } from "@/actions/ai";
 
 function makeId(): string {
   return `msg_${crypto.randomUUID().slice(0, 8)}`;
@@ -29,7 +30,7 @@ export function AiClient() {
     }, 30);
   }
 
-  function sendQuery(text: string) {
+  async function sendQuery(text: string) {
     const trimmed = text.trim();
     if (!trimmed || thinking) return;
 
@@ -39,22 +40,25 @@ export function AiClient() {
       content: trimmed,
       createdAt: new Date().toISOString(),
     };
+    
     setMessages((prev) => [...prev, userMsg]);
     setInput("");
     setThinking(true);
     scrollToBottom();
 
-    setTimeout(() => {
-      const assistantMsg: ChatMessage = {
-        id: makeId(),
-        role: "assistant",
-        content: getMockResponse(trimmed),
-        createdAt: new Date().toISOString(),
-      };
-      setMessages((prev) => [...prev, assistantMsg]);
-      setThinking(false);
-      scrollToBottom();
-    }, 1200);
+    // Call the real AI Server Action
+    const res = await chatWithAI(trimmed);
+
+    const assistantMsg: ChatMessage = {
+      id: makeId(),
+      role: "assistant",
+      content: res.reply || res.error || "I couldn't process that request.",
+      createdAt: new Date().toISOString(),
+    };
+    
+    setMessages((prev) => [...prev, assistantMsg]);
+    setThinking(false);
+    scrollToBottom();
   }
 
   function handleSend() {
@@ -82,8 +86,8 @@ export function AiClient() {
           AI Business Assistant
         </h1>
         <p className="mt-1 text-sm text-muted">
-          Ask questions about your business in plain language.{" "}
-          <span className="text-xs">Demo — powered by a keyword-matched mock, not real AI.</span>
+          Ask questions about your business.{" "}
+          <span className="text-xs text-success">Powered by real AI and live database context.</span>
         </p>
       </div>
 
@@ -98,7 +102,7 @@ export function AiClient() {
               <div>
                 <p className="text-sm font-medium">QELVANTA Assistant</p>
                 <p className="text-[10px] text-muted">
-                  {thinking ? "Thinking…" : "Ready"}
+                  {thinking ? "Analyzing database..." : "Ready"}
                 </p>
               </div>
             </div>
@@ -125,7 +129,7 @@ export function AiClient() {
                 </p>
                 <p className="mt-1 max-w-sm text-xs text-muted">
                   Ask me about revenue, top products, low stock, expenses, or
-                  customer balances. Try a suggested question from the sidebar.
+                  customer balances. I have direct access to your live database.
                 </p>
               </div>
             )}
@@ -161,10 +165,6 @@ export function AiClient() {
                 <Send className="h-4 w-4" />
               </Button>
             </div>
-            <p className="mt-1.5 text-center text-[10px] text-muted">
-              <kbd className="rounded border border-border bg-background px-1">Enter</kbd> to send ·{" "}
-              <kbd className="rounded border border-border bg-background px-1">Shift</kbd>+<kbd className="rounded border border-border bg-background px-1">Enter</kbd> for new line
-            </p>
           </div>
         </div>
 
@@ -173,7 +173,6 @@ export function AiClient() {
           <section>
             <div className="mb-2 flex items-center justify-between">
               <h2 className="font-heading text-sm font-semibold">Try asking</h2>
-              <Badge variant="muted" className="text-[10px]">Suggested</Badge>
             </div>
             <SuggestedQuestions
               questions={SUGGESTED_QUESTIONS}
@@ -183,15 +182,6 @@ export function AiClient() {
           </section>
 
           <InsightSection cards={INSIGHT_CARDS} onAskAbout={sendQuery} />
-
-          <div className="rounded-md border border-dashed border-border bg-surface/40 p-3">
-            <p className="text-[10px] leading-relaxed text-muted">
-              <strong className="text-warning">Demo limitation:</strong> This assistant
-              uses keyword matching and fixed mock data. Real AI integration
-              (with authorization-aware business data) arrives with the backend
-              phase.
-            </p>
-          </div>
         </aside>
       </div>
     </div>
