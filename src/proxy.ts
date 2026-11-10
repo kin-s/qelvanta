@@ -2,7 +2,7 @@ import { NextResponse } from "next/server"
 import { getToken } from "next-auth/jwt"
 
 export async function proxy(req: any) {
-  // Use getToken instead of auth() to avoid Prisma/Adapter in Edge Middleware
+  // Use getToken instead of auth() to avoid Prisma in Edge Middleware
   const token = await getToken({ req, secret: process.env.AUTH_SECRET })
   const isLoggedIn = !!token
   

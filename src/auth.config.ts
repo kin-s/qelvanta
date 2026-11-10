@@ -1,5 +1,10 @@
 import Credentials from "next-auth/providers/credentials"
 
+// Explicit validation to catch missing secrets during Edge init
+if (!process.env.AUTH_SECRET) {
+  throw new Error("AUTH_SECRET is missing from environment variables");
+}
+
 const config = {
   providers: [
     Credentials({

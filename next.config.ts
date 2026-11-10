@@ -15,7 +15,6 @@ const nextConfig: NextConfig = {
     "resend", 
     "@prisma/client",
     "bcrypt-ts"
-    // REMOVED: "@auth/core" and "next-auth"
   ],
 };
 
