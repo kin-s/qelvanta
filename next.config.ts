@@ -1,3 +1,4 @@
+// next.config.ts
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
@@ -9,7 +10,7 @@ const nextConfig: NextConfig = {
       },
     },
   },
-  serverExternalPackages: ["@aws-sdk/client-s3", "openai", "resend"],
+  serverExternalPackages: ["@aws-sdk/client-s3", "openai", "resend", "@prisma/client"],
 };
 
 export default nextConfig;
