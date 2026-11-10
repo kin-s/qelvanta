@@ -1,12 +1,12 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Plus } from "lucide-react";
+import { Plus, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { useLocalStorageState } from "@/hooks/use-local-storage";
-import { SEED_CATEGORIES, SEED_MOVEMENTS, SEED_PRODUCTS } from "@/data/inventory";
-import type { Category, Product, StockMovement } from "@/types/inventory";
+import { SEED_CATEGORIES } from "@/data/inventory";
+import type { Category, Product } from "@/types/inventory";
 import { InventoryOverview } from "./inventory-overview";
 import { ProductTable } from "./product-table";
 import { ProductForm } from "./product-form";
@@ -16,28 +16,27 @@ import { AdjustStockDialog, type AdjustStockInitial } from "./adjust-stock-dialo
 import { StockMovementTable } from "./stock-movement-table";
 import { LowStockTable, suggestedReorderQuantity } from "./low-stock-table";
 import { ProductDetailSheet } from "./product-detail-sheet";
+import { createProduct } from "@/actions/inventory";
+import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 
-type Tab = "overview" | "products" | "categories" | "movements" | "low-stock";
+type Tab = "overview" | "products" | "movements" | "low-stock" | "categories";
 
-function generateId(prefix: string): string {
-  return `${prefix}_${crypto.randomUUID().slice(0, 8)}`;
-}
-
-export function InventoryClient() {
-  const [products, setProducts] = useLocalStorageState<Product[]>(
-    "bizflow:products",
-    SEED_PRODUCTS
-  );
-  const [categories, setCategories] = useLocalStorageState<Category[]>(
+export function InventoryClient({ initialProducts }: { initialProducts: Product[] }) {
+  // We keep categories in local storage for now, but products are from DB
+  const [categories] = useLocalStorageState<Category[]>(
     "bizflow:categories",
     SEED_CATEGORIES
   );
-  const [movements, setMovements] = useLocalStorageState<StockMovement[]>(
+  // Movements are still mocked locally for this phase
+  const [movements, setMovements] = useLocalStorageState<any[]>(
     "bizflow:stock-movements",
-    SEED_MOVEMENTS
+    []
   );
 
+  const router = useRouter();
+  const [products, setProducts] = useState<Product[]>(initialProducts);
+  
   const [tab, setTab] = useState<Tab>("overview");
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Product | null>(null);
@@ -47,6 +46,7 @@ export function InventoryClient() {
   const [adjustOpen, setAdjustOpen] = useState(false);
   const [adjustInitial, setAdjustInitial] = useState<AdjustStockInitial | undefined>();
   const [viewing, setViewing] = useState<Product | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const productCounts = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -63,80 +63,59 @@ export function InventoryClient() {
 
   function openAdd() { setEditing(null); setFormOpen(true); }
   function openEdit(p: Product) { setEditing(p); setFormOpen(true); setViewing(null); }
+  
   function openAdjust(p?: Product, qty?: number) {
     setViewing(null);
     setAdjustInitial(p ? { productId: p.id, type: "received", quantity: qty ?? suggestedReorderQuantity(p) } : undefined);
     setAdjustOpen(true);
   }
 
-  function submitProduct(input: Product) {
-    const product = input.id ? input : { ...input, id: generateId("prod") };
-    const exists = products.some((x) => x.id === product.id);
-    if (exists) {
-      setProducts(products.map((x) => (x.id === product.id ? product : x)));
-      toast.success("Product updated");
-    } else {
-      setProducts([...products, product]);
-      toast.success("Product added");
+  async function submitProduct(input: Product) {
+    if (input.id) {
+      // Edit product logic (to be implemented in next phase)
+      toast.error("Editing products is coming in the next update!");
+      return;
     }
+
+    setIsSubmitting(true);
+    // Call the Server Action
+    const res = await createProduct(input);
+    setIsSubmitting(false);
+
+    if (res.error) {
+      toast.error("Failed to create product", { description: res.error });
+      return;
+    }
+
+    if (res.product) {
+      setProducts([res.product, ...products]);
+      toast.success("Product saved to database!");
+    }
+    
     setFormOpen(false);
     setEditing(null);
+    router.refresh(); // Refresh server data
   }
 
   function duplicateProduct(p: Product) {
-    const now = new Date().toISOString();
-    const copy: Product = {
-      ...p,
-      id: generateId("prod"),
-      name: `${p.name} (copy)`,
-      sku: `${p.sku}-COPY`,
-      stockQuantity: 0,
-      createdAt: now,
-      updatedAt: now,
-    };
-    setProducts([...products, copy]);
-    setViewing(null);
-    toast.success("Product duplicated", { description: copy.name });
+    toast.error("Duplication will be enabled in the next update.");
   }
 
   function deleteProduct(p: Product) {
-    setProducts(products.filter((x) => x.id !== p.id));
+    toast.error("Deletion will be enabled in the next update.");
     setDeleteTarget(null);
     setViewing(null);
-    toast.success("Product deleted");
   }
 
   function bulkDelete(ids: string[]) {
-    setBulkDeleteIds(ids);
-    setBulkDeleteOpen(true);
+    toast.error("Bulk actions will be enabled in the next update.");
   }
 
-  function confirmBulkDelete() {
-    setProducts(products.filter((p) => !bulkDeleteIds.includes(p.id)));
-    toast.success(`${bulkDeleteIds.length} products deleted`);
-    setBulkDeleteOpen(false);
-    setBulkDeleteIds([]);
-  }
+  function confirmBulkDelete() { setBulkDeleteOpen(false); }
 
-  function recordMovement(m: StockMovement) {
-    setMovements([m, ...movements]);
-    setProducts(
-      products.map((p) => {
-        if (p.id !== m.productId) return p;
-        const nextQty = Math.max(0, p.stockQuantity + m.quantityDelta);
-        return { ...p, stockQuantity: nextQty, updatedAt: new Date().toISOString() };
-      })
-    );
-    toast.success("Stock movement recorded", {
-      description: `${m.productName} · ${m.quantityDelta > 0 ? "+" : ""}${m.quantityDelta}`,
-    });
-    if (viewing && viewing.id === m.productId) {
-      setViewing({
-        ...viewing,
-        stockQuantity: Math.max(0, viewing.stockQuantity + m.quantityDelta),
-        updatedAt: new Date().toISOString(),
-      });
-    }
+  function recordMovement(m: any) {
+    toast.error("Stock adjustments are coming in the next update.");
+    setAdjustOpen(false);
   }
 
   function reorderFromLowStock(p: Product, qty: number) {
@@ -159,17 +138,17 @@ export function InventoryClient() {
             Inventory
           </h1>
           <p className="mt-1 text-sm text-muted">
-            Manage products, stock, and categories across locations.{" "}
-            <span className="text-xs">Demo data — changes persist locally.</span>
+            Manage products, stock, and categories.{" "}
+            <span className="text-xs text-success">Products are now connected to PostgreSQL!</span>
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="secondary" onClick={() => openAdjust()}>
+          <Button variant="secondary" onClick={() => openAdjust()} disabled>
             <Plus />
             Adjust stock
           </Button>
-          <Button onClick={openAdd}>
-            <Plus />
+          <Button onClick={openAdd} disabled={isSubmitting}>
+            {isSubmitting ? <Loader2 className="animate-spin" /> : <Plus />}
             Add product
           </Button>
         </div>
@@ -219,10 +198,7 @@ export function InventoryClient() {
       )}
 
       {tab === "movements" && (
-        <StockMovementTable
-          movements={movements}
-          onRecord={() => openAdjust()}
-        />
+        <StockMovementTable movements={movements} onRecord={() => openAdjust()} />
       )}
 
       {tab === "low-stock" && (
@@ -233,11 +209,8 @@ export function InventoryClient() {
         <CategoryManager
           categories={categories}
           productCounts={productCounts}
-          onCreate={(c) => setCategories([...categories, c])}
-          onDelete={(id) => {
-            setCategories(categories.filter((c) => c.id !== id));
-            toast.success("Category deleted");
-          }}
+          onCreate={() => toast.error("Category saving is coming soon!")}
+          onDelete={() => toast.error("Category deletion is coming soon!")}
         />
       )}
 
@@ -254,15 +227,15 @@ export function InventoryClient() {
         open={!!deleteTarget}
         onOpenChange={(o) => !o && setDeleteTarget(null)}
         title={`Delete "${deleteTarget?.name ?? ""}"?`}
-        description="This will remove the product from your catalogue. You cannot undo this action."
-        onConfirm={() => deleteTarget && deleteProduct(deleteTarget)}
+        description="This action is coming in the next update."
+        onConfirm={() => deleteProduct(deleteTarget!)}
       />
 
       <DeleteDialog
         open={bulkDeleteOpen}
         onOpenChange={(o) => !o && setBulkDeleteOpen(false)}
         title={`Delete ${bulkDeleteIds.length} products?`}
-        description="All selected products will be permanently removed. You cannot undo this action."
+        description="This action is coming in the next update."
         onConfirm={confirmBulkDelete}
       />
 
