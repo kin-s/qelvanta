@@ -4,7 +4,6 @@ import { useRef, useState } from "react";
 import { Send, Trash2, Sparkles, Bot } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
 import { ChatMessageBubble, TypingIndicator } from "./chat-message";
 import { SuggestedQuestions } from "./suggested-questions";
 import { InsightSection } from "./insight-cards";

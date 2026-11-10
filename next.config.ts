@@ -9,6 +9,7 @@ const nextConfig: NextConfig = {
       },
     },
   },
+  serverExternalPackages: ["@aws-sdk/client-s3", "openai", "resend"],
 };
 
 export default nextConfig;

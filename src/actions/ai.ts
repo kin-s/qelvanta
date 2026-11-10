@@ -12,7 +12,7 @@ export async function chatWithAI(userQuery: string) {
     const products = await prisma.product.findMany({
       where: { organizationId: orgId },
       select: { name: true, stockQuantity: true, sellingPrice: true },
-      take: 20 // Limit context size
+      take: 20 // Limit context size to avoid huge token counts
     })
 
     const sales = await prisma.sale.findMany({
@@ -27,11 +27,13 @@ export async function chatWithAI(userQuery: string) {
       Here is the current state of the user's business:
       Products (Name, Stock, Price): ${JSON.stringify(products)}
       Recent Sales (Total, Date): ${JSON.stringify(sales)}
+      
+      Answer the user's question based on this data. Be concise and helpful.
     `
 
     // 2. Call OpenAI
     const response = await openai.chat.completions.create({
-      model: "gpt-4o-mini", // Fast and cheap
+      model: "gpt-4o-mini", // Fast and cost-effective
       messages: [
         { role: "system", content: contextData },
         { role: "user", content: userQuery }
