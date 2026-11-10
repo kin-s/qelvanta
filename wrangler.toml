@@ -1,5 +1,9 @@
 name = "qelvanta"
 main = ".open-next/worker.js"
 compatibility_date = "2026-11-01"
+
+# CRITICAL: Allows Cloudflare to polyfill Node.js APIs (fs, crypto, stream)
+# which are required by Auth.js, Prisma, and bcrypt-ts.
 compatibility_flags = ["nodejs_compat"]
+
 assets = { directory = ".open-next/assets", binding = "ASSETS" }

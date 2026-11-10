@@ -1,4 +1,3 @@
-// src/auth.config.ts
 import type { NextAuthConfig } from "next-auth"
 import Credentials from "next-auth/providers/credentials"
 
@@ -9,7 +8,7 @@ export default {
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" }
       },
-      // Authorization logic is handled in auth.ts
+      // Authorization logic is handled in src/lib/auth.ts
       authorize: () => null,
     })
   ],
@@ -17,4 +16,5 @@ export default {
     signIn: '/login',
   },
   session: { strategy: "jwt" },
+  trustHost: true, // <-- CRITICAL: Trust the Cloudflare host
 } satisfies NextAuthConfig
