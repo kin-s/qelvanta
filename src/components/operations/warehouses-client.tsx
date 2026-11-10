@@ -5,16 +5,17 @@ import { Plus, Warehouse as WarehouseIcon, Box } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { useLocalStorageState } from "@/hooks/use-local-storage";
-import { SEED_WAREHOUSES, SEED_BRANCHES } from "@/data/operations";
 import type { Warehouse, Branch } from "@/types/operations";
 import { WarehouseTable } from "./warehouse-table";
 import { WarehouseForm } from "./warehouse-form";
+import { createWarehouse } from "@/actions/operations";
+import { useRouter } from "next/navigation";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
-export function WarehousesClient() {
-  const [warehouses, setWarehouses] = useLocalStorageState<Warehouse[]>("bizflow:warehouses", SEED_WAREHOUSES);
-  const [branches] = useLocalStorageState<Branch[]>("bizflow:branches", SEED_BRANCHES);
+export function WarehousesClient({ initialWarehouses, initialBranches }: { initialWarehouses: Warehouse[]; initialBranches: Branch[] }) {
+  const [warehouses, setWarehouses] = useState<Warehouse[]>(initialWarehouses);
+  const [branches] = useState<Branch[]>(initialBranches);
+  const router = useRouter();
   
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Warehouse | null>(null);
@@ -33,23 +34,22 @@ export function WarehousesClient() {
   function openAdd() { setEditing(null); setFormOpen(true); }
   function openEdit(w: Warehouse) { setEditing(w); setFormOpen(true); }
 
-  function submit(input: Warehouse) {
-    const warehouse = input.id ? input : { ...input, id: `wh_${crypto.randomUUID().slice(0, 8)}` };
-    const exists = warehouses.some(w => w.id === warehouse.id);
-    if (exists) {
-      setWarehouses(warehouses.map(w => w.id === warehouse.id ? warehouse : w));
-      toast.success("Warehouse updated");
-    } else {
-      setWarehouses([warehouse, ...warehouses]);
-      toast.success("Warehouse added");
+  async function submit(input: Warehouse) {
+    if (input.id) {
+      toast.error("Editing coming soon");
+      return;
     }
+    const res = await createWarehouse(input);
+    if (res.error) return toast.error(res.error);
+
+    setWarehouses([input, ...warehouses]);
+    toast.success("Warehouse saved to database");
     setFormOpen(false);
+    router.refresh();
   }
 
   function confirmDelete() {
-    if (!deleteTarget) return;
-    setWarehouses(warehouses.filter(w => w.id !== deleteTarget.id));
-    toast.success("Warehouse deleted");
+    toast.error("Deletion coming soon");
     setDeleteTarget(null);
   }
 
@@ -58,7 +58,10 @@ export function WarehousesClient() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="font-heading text-2xl font-semibold tracking-tight sm:text-3xl">Warehouses</h1>
-          <p className="mt-1 text-sm text-muted">Manage storage facilities and capacity.</p>
+          <p className="mt-1 text-sm text-muted">
+            Manage storage facilities and capacity.{" "}
+            <span className="text-xs text-success">Connected to PostgreSQL.</span>
+          </p>
         </div>
         <Button onClick={openAdd}><Plus /> Add Warehouse</Button>
       </div>
@@ -87,7 +90,7 @@ export function WarehousesClient() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete {deleteTarget?.name}?</AlertDialogTitle>
-            <AlertDialogDescription>This will permanently remove the warehouse record.</AlertDialogDescription>
+            <AlertDialogDescription>This action is coming soon.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>

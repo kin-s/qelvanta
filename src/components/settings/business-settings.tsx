@@ -7,17 +7,27 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select } from "@/components/ui/select";
+import { updateOrganization } from "@/actions/settings";
 
 export function BusinessSettings() {
   const [isSaving, setIsSaving] = useState(false);
 
-  function handleSave(e: React.FormEvent) {
+  async function handleSave(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setIsSaving(true);
-    setTimeout(() => {
-      setIsSaving(false);
-      toast.success("Business settings saved");
-    }, 600);
+    
+    const formData = new FormData(e.currentTarget);
+    const name = formData.get("name") as string;
+    const currency = formData.get("currency") as string;
+
+    const res = await updateOrganization({ name, currency });
+    setIsSaving(false);
+
+    if (res.error) {
+      toast.error(res.error);
+    } else {
+      toast.success("Business settings saved to database");
+    }
   }
 
   return (
@@ -31,26 +41,26 @@ export function BusinessSettings() {
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2 sm:col-span-2">
             <Label>Business Name</Label>
-            <Input defaultValue="BIZFLOW Demo Inc." />
+            <Input name="name" defaultValue="QELVANTA Demo Inc." required />
           </div>
           
           <div className="space-y-2 sm:col-span-2">
             <Label>Business Description</Label>
-            <Textarea defaultValue="A premium demonstration of the BIZFLOW business operating system." rows={3} />
+            <Textarea name="description" defaultValue="A premium demonstration of the QELVANTA business operating system." rows={3} />
           </div>
 
           <div className="space-y-2">
             <Label>Contact Email</Label>
-            <Input type="email" defaultValue="hello@bizflow.example" />
+            <Input name="email" type="email" defaultValue="hello@qelvanta.example" />
           </div>
           <div className="space-y-2">
             <Label>Phone Number</Label>
-            <Input type="tel" defaultValue="+1 555 0100" />
+            <Input name="phone" type="tel" defaultValue="+1 555 0100" />
           </div>
 
           <div className="space-y-2">
             <Label>Industry</Label>
-            <Select defaultValue="retail">
+            <Select name="industry" defaultValue="retail">
               <option value="retail">Retail</option>
               <option value="wholesale">Wholesale</option>
               <option value="services">Services</option>
@@ -58,13 +68,13 @@ export function BusinessSettings() {
             </Select>
           </div>
           <div className="space-y-2">
-            <Label>Website</Label>
-            <Input type="url" defaultValue="https://bizflow.example" />
-          </div>
-
-          <div className="space-y-2 sm:col-span-2">
-            <Label>Physical Address</Label>
-            <Input defaultValue="123 Commerce St, New York, NY 10001" />
+            <Label>Base Currency</Label>
+            <Select name="currency" defaultValue="USD">
+              <option value="USD">USD - US Dollar</option>
+              <option value="EUR">EUR - Euro</option>
+              <option value="GBP">GBP - British Pound</option>
+              <option value="KES">KES - Kenyan Shilling</option>
+            </Select>
           </div>
         </div>
 

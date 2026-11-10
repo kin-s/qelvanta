@@ -5,16 +5,17 @@ import { Plus, Building2, MapPin } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { useLocalStorageState } from "@/hooks/use-local-storage";
-import { SEED_BRANCHES, SEED_WAREHOUSES } from "@/data/operations";
 import type { Branch, Warehouse } from "@/types/operations";
 import { BranchTable } from "./branch-table";
 import { BranchForm } from "./branch-form";
+import { createBranch } from "@/actions/operations";
+import { useRouter } from "next/navigation";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
-export function BranchesClient() {
-  const [branches, setBranches] = useLocalStorageState<Branch[]>("bizflow:branches", SEED_BRANCHES);
-  const [warehouses] = useLocalStorageState<Warehouse[]>("bizflow:warehouses", SEED_WAREHOUSES);
+export function BranchesClient({ initialBranches, initialWarehouses }: { initialBranches: Branch[]; initialWarehouses: Warehouse[] }) {
+  const [branches, setBranches] = useState<Branch[]>(initialBranches);
+  const [warehouses] = useState<Warehouse[]>(initialWarehouses);
+  const router = useRouter();
   
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Branch | null>(null);
@@ -22,7 +23,6 @@ export function BranchesClient() {
 
   const total = branches.length;
   const active = branches.filter(b => b.status === "active").length;
-  
   const uniqueCities = new Set(branches.map(b => b.city)).size;
   const totalWarehouses = warehouses.length;
 
@@ -36,29 +36,22 @@ export function BranchesClient() {
   function openAdd() { setEditing(null); setFormOpen(true); }
   function openEdit(b: Branch) { setEditing(b); setFormOpen(true); }
 
-  function submit(input: Branch) {
-    const branch = input.id ? input : { ...input, id: `br_${crypto.randomUUID().slice(0, 8)}` };
-    const exists = branches.some(b => b.id === branch.id);
-    if (exists) {
-      setBranches(branches.map(b => b.id === branch.id ? branch : b));
-      toast.success("Branch updated");
-    } else {
-      setBranches([branch, ...branches]);
-      toast.success("Branch added");
+  async function submit(input: Branch) {
+    if (input.id) {
+      toast.error("Editing coming soon");
+      return;
     }
+    const res = await createBranch(input);
+    if (res.error) return toast.error(res.error);
+
+    setBranches([input, ...branches]);
+    toast.success("Branch saved to database");
     setFormOpen(false);
+    router.refresh();
   }
 
   function confirmDelete() {
-    if (!deleteTarget) return;
-    const hasWarehouses = warehouses.some(w => w.branchId === deleteTarget.id);
-    if (hasWarehouses) {
-      toast.error("Cannot delete", { description: "This branch has warehouses assigned to it. Move or delete them first." });
-      setDeleteTarget(null);
-      return;
-    }
-    setBranches(branches.filter(b => b.id !== deleteTarget.id));
-    toast.success("Branch deleted");
+    toast.error("Deletion coming soon");
     setDeleteTarget(null);
   }
 
@@ -67,7 +60,10 @@ export function BranchesClient() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="font-heading text-2xl font-semibold tracking-tight sm:text-3xl">Branches</h1>
-          <p className="mt-1 text-sm text-muted">Manage physical locations and regional hubs.</p>
+          <p className="mt-1 text-sm text-muted">
+            Manage physical locations.{" "}
+            <span className="text-xs text-success">Connected to PostgreSQL.</span>
+          </p>
         </div>
         <Button onClick={openAdd}><Plus /> Add Branch</Button>
       </div>
@@ -96,7 +92,7 @@ export function BranchesClient() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete {deleteTarget?.name}?</AlertDialogTitle>
-            <AlertDialogDescription>This will remove the branch. You cannot undo this.</AlertDialogDescription>
+            <AlertDialogDescription>This action is coming soon.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>

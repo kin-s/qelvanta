@@ -1,6 +1,7 @@
 import { InventoryClient } from "@/components/inventory/inventory-client";
 import { getProducts } from "@/actions/inventory";
-import { PageLoader } from "@/components/shared/spinner";
+
+export const dynamic = 'force-dynamic';
 
 export default async function Page() {
   const data = await getProducts();

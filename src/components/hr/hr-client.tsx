@@ -5,7 +5,7 @@ import { Plus } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { useLocalStorageState } from "@/hooks/use-local-storage";
-import { SEED_EMPLOYEES, SEED_ATTENDANCE, SEED_LEAVE } from "@/data/hr";
+import { SEED_ATTENDANCE, SEED_LEAVE } from "@/data/hr";
 import type { Employee, AttendanceRecord, LeaveRequest } from "@/types/hr";
 import { HrOverview } from "./hr-overview";
 import { EmployeeTable } from "./employee-table";
@@ -14,14 +14,18 @@ import { EmployeeDetailSheet } from "./employee-detail-sheet";
 import { AttendanceTab } from "./attendance-tab";
 import { LeaveTab } from "./leave-tab";
 import { PayrollTab } from "./payroll-tab";
+import { createEmployee } from "@/actions/hr";
+import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 
 type Tab = "overview" | "directory" | "attendance" | "leave" | "payroll";
 
-export function HrClient() {
-  const [employees, setEmployees] = useLocalStorageState<Employee[]>("bizflow:employees", SEED_EMPLOYEES);
-  const [attendance, setAttendance] = useLocalStorageState<AttendanceRecord[]>("bizflow:attendance", SEED_ATTENDANCE);
-  const [leave, setLeave] = useLocalStorageState<LeaveRequest[]>("bizflow:leave", SEED_LEAVE);
+export function HrClient({ initialEmployees }: { initialEmployees: Employee[] }) {
+  const [employees, setEmployees] = useState<Employee[]>(initialEmployees);
+  // Attendance and Leave still mocked locally for now
+  const [attendance] = useLocalStorageState<AttendanceRecord[]>("bizflow:attendance", SEED_ATTENDANCE);
+  const [leave] = useLocalStorageState<LeaveRequest[]>("bizflow:leave", SEED_LEAVE);
+  const router = useRouter();
 
   const [tab, setTab] = useState<Tab>("overview");
   const [formOpen, setFormOpen] = useState(false);
@@ -31,54 +35,24 @@ export function HrClient() {
   function openAdd() { setEditing(null); setFormOpen(true); }
   function openEdit(e: Employee) { setEditing(e); setFormOpen(true); setViewing(null); }
 
-  function submitEmployee(emp: Employee) {
-    const exists = employees.some(e => e.id === emp.id);
-    if (exists) {
-      setEmployees(employees.map(e => e.id === emp.id ? emp : e));
-      toast.success("Employee updated");
-    } else {
-      setEmployees([emp, ...employees]);
-      toast.success("Employee added");
-    }
-    setFormOpen(false);
-  }
-
-  function deleteEmployee(emp: Employee) {
-    setEmployees(employees.filter(e => e.id !== emp.id));
-    setViewing(null);
-    toast.success("Employee removed");
-  }
-
-  function clockIn(empId: string) {
-    const now = new Date().toISOString();
-    const todayStr = now.slice(0, 10);
-    // Check if already checked in today (even if checked out)
-    const existing = attendance.find(a => a.employeeId === empId && a.date.startsWith(todayStr));
-    if (existing) {
-      toast.error("Already clocked in today.");
+  async function submitEmployee(emp: Employee) {
+    if (emp.id) {
+      toast.error("Editing coming soon");
       return;
     }
-    setAttendance([{
-      id: `att_${crypto.randomUUID().slice(0,8)}`,
-      employeeId: empId,
-      date: now,
-      checkIn: now,
-      checkOut: null,
-      status: new Date(now).getHours() >= 9 ? "late" : "present",
-    }, ...attendance]);
-    toast.success("Clocked in successfully");
+    const res = await createEmployee(emp);
+    if (res.error) return toast.error(res.error);
+    
+    setEmployees([emp, ...employees]);
+    toast.success("Employee saved to database");
+    setFormOpen(false);
+    router.refresh();
   }
 
-  function clockOut(recordId: string) {
-    const now = new Date().toISOString();
-    setAttendance(attendance.map(a => a.id === recordId ? { ...a, checkOut: now } : a));
-    toast.success("Clocked out successfully");
-  }
-
-  function updateLeave(id: string, status: "approved" | "rejected") {
-    setLeave(leave.map(l => l.id === id ? { ...l, status } : l));
-    toast.success(`Leave request ${status}`);
-  }
+  function deleteEmployee() { toast.error("Deletion coming soon"); }
+  function clockIn() { toast.error("Attendance coming soon"); }
+  function clockOut() { toast.error("Attendance coming soon"); }
+  function updateLeave() { toast.error("Leave management coming soon"); }
 
   const tabs = [
     { id: "overview" as const, label: "Overview" },
@@ -95,7 +69,7 @@ export function HrClient() {
           <h1 className="font-heading text-2xl font-semibold tracking-tight sm:text-3xl">Employees & HR</h1>
           <p className="mt-1 text-sm text-muted">
             Manage staff, attendance, and payroll.{" "}
-            <span className="text-xs">Demo data — changes persist locally.</span>
+            <span className="text-xs text-success">Directory connected to PostgreSQL.</span>
           </p>
         </div>
         <Button onClick={openAdd}>
