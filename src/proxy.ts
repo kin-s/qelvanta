@@ -1,8 +1,10 @@
-import { auth } from "@/lib/auth"
 import { NextResponse } from "next/server"
+import { getToken } from "next-auth/jwt"
 
-export default auth((req) => {
-  const isLoggedIn = !!req.auth
+export async function proxy(req: any) {
+  // Use getToken instead of auth() to avoid Prisma/Adapter in Edge Middleware
+  const token = await getToken({ req, secret: process.env.AUTH_SECRET })
+  const isLoggedIn = !!token
   
   const isDashboardRoute = 
     req.nextUrl.pathname.startsWith('/dashboard') || 
@@ -27,7 +29,7 @@ export default auth((req) => {
   }
   
   return NextResponse.next()
-})
+}
 
 export const config = {
   matcher: ['/((?!api|_next/static|_next/image|favicon.ico|.*\\.png$).*)'],
