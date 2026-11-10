@@ -1,7 +1,7 @@
 "use server"
 
 import { prisma } from "@/lib/prisma"
-import bcrypt from "bcryptjs"
+import { hash } from "bcrypt-ts" // <-- Changed from bcrypt to bcrypt-ts
 import { z } from "zod"
 import { signIn } from "@/lib/auth"
 import { AuthError } from "next-auth"
@@ -26,7 +26,8 @@ export async function registerUser(formData: z.infer<typeof RegisterSchema>) {
       return { error: "An account with this email already exists." }
     }
 
-    const passwordHash = await bcrypt.hash(password, 10)
+    // Use hash from bcrypt-ts
+    const passwordHash = await hash(password, 10)
 
     await prisma.user.create({
       data: { name, email, passwordHash }
@@ -34,6 +35,7 @@ export async function registerUser(formData: z.infer<typeof RegisterSchema>) {
 
     return { success: "Account created successfully. You can now log in." }
   } catch (error) {
+    console.error("Registration error:", error)
     return { error: "Something went wrong. Please try again." }
   }
 }
