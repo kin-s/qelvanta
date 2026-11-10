@@ -4,19 +4,20 @@ import { useState } from "react";
 import { Plus } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { useLocalStorageState } from "@/hooks/use-local-storage";
-import { SEED_INVOICES, SEED_QUOTATIONS } from "@/data/invoices";
 import type { Invoice, Quotation, BusinessDocument } from "@/types/invoices";
 import { InvoiceTable } from "./invoice-table";
 import { InvoiceForm } from "./invoice-form";
 import { InvoiceDetailSheet } from "./invoice-detail-sheet";
+import { saveDocument } from "@/actions/invoices";
+import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 
 type Tab = "invoices" | "quotations";
 
-export function InvoicesClient() {
-  const [invoices, setInvoices] = useLocalStorageState<Invoice[]>("bizflow:invoices", SEED_INVOICES);
-  const [quotations, setQuotations] = useLocalStorageState<Quotation[]>("bizflow:quotations", SEED_QUOTATIONS);
+export function InvoicesClient({ initialInvoices, initialQuotations }: { initialInvoices: Invoice[]; initialQuotations: Quotation[] }) {
+  const [invoices, setInvoices] = useState<Invoice[]>(initialInvoices);
+  const [quotations, setQuotations] = useState<Quotation[]>(initialQuotations);
+  const router = useRouter();
 
   const [tab, setTab] = useState<Tab>("invoices");
   const [formOpen, setFormOpen] = useState(false);
@@ -28,51 +29,30 @@ export function InvoicesClient() {
       : quotations.find(q => q.id === viewingId) ?? null
     : null;
 
-  function handleCreate(doc: BusinessDocument) {
+  async function handleCreate(doc: BusinessDocument) {
+    const res = await saveDocument(doc);
+    if (res.error) return toast.error("Failed to save document");
+
     if (doc.type === "invoice") {
-      setInvoices([doc, ...invoices]);
-      toast.success("Invoice created", { description: doc.id });
+      setInvoices([doc as Invoice, ...invoices]);
     } else {
-      setQuotations([doc, ...quotations]);
-      toast.success("Quotation created", { description: doc.id });
+      setQuotations([doc as Quotation, ...quotations]);
     }
+    toast.success(`${doc.type} saved to database`);
     setViewingId(doc.id);
+    router.refresh();
   }
 
-  function handleDelete(id: string) {
-    if (tab === "invoices") setInvoices(invoices.filter(i => i.id !== id));
-    else setQuotations(quotations.filter(q => q.id !== id));
-    toast.success("Deleted", { description: id });
-    if (viewingId === id) setViewingId(null);
+  function handleDelete() {
+    toast.error("Deletion coming soon");
   }
 
-  function handleStatusUpdate(id: string, status: string) {
-    if (tab === "invoices") {
-      setInvoices(invoices.map(i => i.id === id ? { ...i, status: status as Invoice["status"] } : i));
-    } else {
-      setQuotations(quotations.map(q => q.id === id ? { ...q, status: status as Quotation["status"] } : q));
-    }
-    toast.success(`Status updated to ${status}`);
+  function handleStatusUpdate() {
+    toast.error("Status updates coming soon");
   }
 
-  function handleConvert(id: string) {
-    const quote = quotations.find(q => q.id === id);
-    if (!quote) return;
-
-    const newInvoice: Invoice = {
-      ...quote,
-      type: "invoice",
-      id: `INV-${crypto.randomUUID().slice(0, 6).toUpperCase()}`,
-      issueDate: new Date().toISOString(),
-      dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-      status: "draft",
-    };
-
-    setInvoices([newInvoice, ...invoices]);
-    setQuotations(quotations.map(q => q.id === id ? { ...q, status: "accepted" } : q));
-    setTab("invoices");
-    setViewingId(newInvoice.id);
-    toast.success("Converted to Invoice", { description: newInvoice.id });
+  function handleConvert() {
+    toast.error("Conversion coming soon");
   }
 
   const tabs = [
@@ -86,8 +66,8 @@ export function InvoicesClient() {
         <div>
           <h1 className="font-heading text-2xl font-semibold tracking-tight sm:text-3xl">Invoices & Quotations</h1>
           <p className="mt-1 text-sm text-muted">
-            Create, send, and track your business documents.{" "}
-            <span className="text-xs">Demo data — changes persist locally.</span>
+            Create, send, and track documents.{" "}
+            <span className="text-xs text-success">Connected to PostgreSQL.</span>
           </p>
         </div>
         <Button onClick={() => setFormOpen(true)}>

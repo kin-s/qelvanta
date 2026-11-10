@@ -4,8 +4,7 @@ import { useState } from "react";
 import { Plus } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { useLocalStorageState } from "@/hooks/use-local-storage";
-import { SEED_EXPENSES, SEED_INCOME, SEED_RECEIVABLES, SEED_PAYABLES } from "@/data/finance";
+import { SEED_RECEIVABLES, SEED_PAYABLES } from "@/data/finance";
 import type { Expense, Income } from "@/types/finance";
 import { FinanceOverview } from "./finance-overview";
 import { ExpenseTable } from "./expense-table";
@@ -14,26 +13,35 @@ import { IncomeTable } from "./income-table";
 import { IncomeForm } from "./income-form";
 import { ProfitLoss } from "./profit-loss";
 import { ReceivablesPayables } from "./receivables-payables";
+import { createExpense, createIncome } from "@/actions/finance";
+import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 
 type Tab = "overview" | "expenses" | "income" | "pl" | "ar_ap";
 
-export function FinanceClient() {
-  const [expenses, setExpenses] = useLocalStorageState<Expense[]>("bizflow:expenses", SEED_EXPENSES);
-  const [income, setIncome] = useLocalStorageState<Income[]>("bizflow:income", SEED_INCOME);
+export function FinanceClient({ initialExpenses, initialIncome }: { initialExpenses: Expense[]; initialIncome: Income[] }) {
+  const [expenses, setExpenses] = useState<Expense[]>(initialExpenses);
+  const [income, setIncome] = useState<Income[]>(initialIncome);
+  const router = useRouter();
 
   const [tab, setTab] = useState<Tab>("overview");
   const [expenseFormOpen, setExpenseFormOpen] = useState(false);
   const [incomeFormOpen, setIncomeFormOpen] = useState(false);
 
-  function handleAddExpense(e: Expense) {
+  async function handleAddExpense(e: Expense) {
+    const res = await createExpense(e);
+    if (res.error) return toast.error("Failed to save expense");
     setExpenses([e, ...expenses]);
-    toast.success("Expense recorded");
+    toast.success("Expense recorded to database");
+    router.refresh();
   }
 
-  function handleAddIncome(i: Income) {
+  async function handleAddIncome(i: Income) {
+    const res = await createIncome(i);
+    if (res.error) return toast.error("Failed to save income");
     setIncome([i, ...income]);
-    toast.success("Income recorded");
+    toast.success("Income recorded to database");
+    router.refresh();
   }
 
   const tabs = [
@@ -51,7 +59,7 @@ export function FinanceClient() {
           <h1 className="font-heading text-2xl font-semibold tracking-tight sm:text-3xl">Finance</h1>
           <p className="mt-1 text-sm text-muted">
             Expenses, income, cash flow, and management reports.{" "}
-            <span className="text-xs">Demo data — changes persist locally.</span>
+            <span className="text-xs text-success">Connected to PostgreSQL.</span>
           </p>
         </div>
         <div className="flex gap-2">
@@ -85,8 +93,8 @@ export function FinanceClient() {
       </div>
 
       {tab === "overview" && <FinanceOverview expenses={expenses} income={income} />}
-      {tab === "expenses" && <ExpenseTable expenses={expenses} onDelete={(id) => setExpenses(expenses.filter(e => e.id !== id))} />}
-      {tab === "income" && <IncomeTable income={income} onDelete={(id) => setIncome(income.filter(i => i.id !== id))} />}
+      {tab === "expenses" && <ExpenseTable expenses={expenses} onDelete={() => toast.error("Deletion coming soon")} />}
+      {tab === "income" && <IncomeTable income={income} onDelete={() => toast.error("Deletion coming soon")} />}
       {tab === "pl" && <ProfitLoss expenses={expenses} income={income} />}
       {tab === "ar_ap" && <ReceivablesPayables receivables={SEED_RECEIVABLES} payables={SEED_PAYABLES} />}
 
