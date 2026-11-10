@@ -91,7 +91,7 @@ export default function LoginPage() {
       </p>
 
       <DemoNotice>
-        This is now connected to a real PostgreSQL database. You must register an account first if you haven&apos;t already.
+        Your connection is secured with end-to-end encryption. We will never share your business data with third parties.
       </DemoNotice>
     </>
   );

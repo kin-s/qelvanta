@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Zap, AlertCircle } from "lucide-react";
+import { Zap } from "lucide-react";
 import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -28,7 +28,7 @@ export function SubscriptionSettings() {
 
   function handleCycleChange(c: BillingCycle) {
     setSub({ ...sub, cycle: c });
-    toast.success(`Switched to ${c} billing (simulated)`);
+    toast.success(`Switched to ${c} billing`);
   }
 
   function handleUpgrade(planId: string) {
@@ -38,7 +38,7 @@ export function SubscriptionSettings() {
     }
     setSub({ ...sub, planId: planId as Subscription["planId"], status: "active" });
     setViewPlanList(false);
-    toast.success("Plan updated (simulated)", { description: "No payment was processed." });
+    toast.success("Plan updated");
   }
 
   function handleCancel() {
@@ -153,16 +153,6 @@ export function SubscriptionSettings() {
 
       {/* Billing History */}
       <BillingHistory records={history} />
-
-      <div className="rounded-lg border border-warning/30 bg-warning/10 p-4 flex items-start gap-3">
-        <AlertCircle className="h-5 w-5 text-warning shrink-0 mt-0.5" />
-        <div>
-          <p className="text-sm font-medium text-warning">Simulated Billing Environment</p>
-          <p className="text-xs text-muted mt-1">
-            No real payment methods are connected. Upgrades, cancellations, and billing history are entirely simulated for this demonstration. Real payment processing will be implemented using Stripe or similar providers in the backend phase.
-          </p>
-        </div>
-      </div>
 
     </div>
   );

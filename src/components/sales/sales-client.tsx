@@ -166,7 +166,7 @@ export function SalesClient({
     setReceiptSale(mockSale);
     setReceiptOpen(true);
 
-    toast.success("Sale saved to database!", { description: mockSale.id });
+    toast.success("Sale completed", { description: mockSale.id });
   }
 
   const historyRows = [...sales].sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));

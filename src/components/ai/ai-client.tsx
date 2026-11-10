@@ -45,7 +45,6 @@ export function AiClient() {
     setThinking(true);
     scrollToBottom();
 
-    // Call the real AI Server Action
     const res = await chatWithAI(trimmed);
 
     const assistantMsg: ChatMessage = {
@@ -85,8 +84,7 @@ export function AiClient() {
           AI Business Assistant
         </h1>
         <p className="mt-1 text-sm text-muted">
-          Ask questions about your business.{" "}
-          <span className="text-xs text-success">Powered by real AI and live database context.</span>
+          Ask questions about your business in plain language.
         </p>
       </div>
 
@@ -101,7 +99,7 @@ export function AiClient() {
               <div>
                 <p className="text-sm font-medium">QELVANTA Assistant</p>
                 <p className="text-[10px] text-muted">
-                  {thinking ? "Analyzing database..." : "Ready"}
+                  {thinking ? "Analyzing data..." : "Online"}
                 </p>
               </div>
             </div>
@@ -127,8 +125,7 @@ export function AiClient() {
                   How can I help?
                 </p>
                 <p className="mt-1 max-w-sm text-xs text-muted">
-                  Ask me about revenue, top products, low stock, expenses, or
-                  customer balances. I have direct access to your live database.
+                  Ask me about revenue, top products, low stock, or customer balances. I have secure access to your business data.
                 </p>
               </div>
             )}

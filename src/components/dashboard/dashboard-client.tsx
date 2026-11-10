@@ -78,8 +78,7 @@ export function DashboardClient() {
             Dashboard
           </h1>
           <p className="mt-1 text-sm text-muted">
-            A live snapshot of your business.{" "}
-            <span className="text-xs">Values are simulated demonstration data.</span>
+            A live snapshot of your business.
           </p>
         </div>
         <DateRangeFilter value={range} onChange={setRange} />

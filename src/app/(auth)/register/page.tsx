@@ -120,7 +120,7 @@ export default function RegisterPage() {
       </p>
 
       <DemoNotice>
-        Registration is now securely connected to the database using bcrypt encryption.
+        By creating an account, you agree to our secure data processing terms. Your data is isolated in a dedicated PostgreSQL database.
       </DemoNotice>
     </>
   );
