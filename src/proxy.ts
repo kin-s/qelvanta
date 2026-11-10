@@ -4,7 +4,6 @@ import { NextResponse } from "next/server"
 export default auth((req) => {
   const isLoggedIn = !!req.auth
   
-  // Define which routes require authentication
   const isDashboardRoute = 
     req.nextUrl.pathname.startsWith('/dashboard') || 
     req.nextUrl.pathname.startsWith('/sales') ||
@@ -31,6 +30,5 @@ export default auth((req) => {
 })
 
 export const config = {
-  // Match all routes except static files, api routes, and assets
   matcher: ['/((?!api|_next/static|_next/image|favicon.ico|.*\\.png$).*)'],
 }
